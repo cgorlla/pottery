@@ -1,0 +1,251 @@
+---
+title: 'Romano-British Pottery Data Analysis'
+output:
+  html_document:
+    df_print: paged
+---
+## Cyril Gorlla
+### University of California, San Diego
+
+## Introduction
+
+We wish to investigate whether there is a significant difference among 5 group means for 9 chemicals in the Romano-British Pottery dataset. 
+
+1. Al2O3: aluminium trioxide
+2. Fe2O3: iron trioxide
+3. MgO: magnesium oxide
+4. CaO: calcium oxide
+5. Na2O: natrium oxide
+6. K2O: kalium oxide
+7. TiO2: titanium oxide
+8. MnO: mangan oxide
+9. BaO: barium oxide
+
+The dataset contains measurements on 48 pottery shards that were collected
+from five sites in the British Isles.
+
+1. Gloucester 
+2. Llanedeyrn
+3. Caldicot 
+4. Islands Thorns
+5. Ashley Rails
+
+## Body
+We will load in the data.
+```{r}
+RBPottery <- read.csv("data.csv")
+```
+*Source*: [Github](https://github.com/tuckermcelroy/ma189/blob/main/Data/RBPottery.csv) 
+
+Baxter, M. J. 2003. *Statistics in Archaeology*. Arnold, London
+
+Tubb, A., A. J. Parker, and G. Nickless. 1980. The Analysis of Romano-British Pottery by Atomic Absorption Spectrophotometry. *Archaeometry* 22: 153-71.
+
+```{r}
+pot_gl <- RBPottery[RBPottery$Kiln==1,]
+pot_llan <- RBPottery[RBPottery$Kiln==2,]
+pot_cald <- RBPottery[RBPottery$Kiln==3,]
+pot_is <- RBPottery[RBPottery$Kiln==4,]
+pot_ar <- RBPottery[RBPottery$Kiln==5,]
+```
+
+```{r}
+colMeans(pot_ar[-c(1:3)])
+colMeans(pot_cald[-c(1:3)])
+colMeans(pot_gl[-c(1:3)])
+colMeans(pot_is[-c(1:3)])
+colMeans(pot_llan[-c(1:3)])
+```
+It's ill-advised to determine whether or not there is a difference in means among these groups simply by looking at the data. Further analysis is required.
+
+### Hypotheses
+
+Null Hypothesis
+
+There is no difference among the group means for the 9 chemicals.
+
+Alternative Hypothesis
+
+There is a difference among the group means for the 9 chemicals (at least two groups are different in means).
+
+$H_0:  \underline{\mu}^{(1)} = \underline{\mu}^{(2)} =\ldots = \underline{\mu}^{(g)}\quad \mbox{versus} \quad H_a: \mu_j^{(k)} \neq\mu_{j}^{(h)}$
+
+We will test the equivalence of mean vectors among five populations, for multiple variables. Since we are looking at more than two populations, we use ANOVA. Specifically, since we are investigating multiple variables among these populations, we use the multivariate case. We can use MANOVA (multivariate analysis of variance) to investigate our hypothesis. We will use $\alpha = 0.05$.
+
+### Assumptions
+
+1. The data from group $k$  has common mean vector $\underline{\mu}^{(k)}$, i.e., ${\mathbb E} [ x_{ij}^{(k)} ] = \underline{\mu}_j^{(k)}.$
+(The $m$ components of the vector correspond to the $m$ variables.)
+
+This assumption may be violated if pottery collected from the same site had inconsistencies, but should otherwise hold.
+
+2. Homoskedasticity: The data from all groups have common covariance matrix ${\mathbf \Sigma}$, i.e.,
+${\mathbf \Sigma} = \mbox{Cov} [ \underline{x}_i^{(k)}, \underline{x}_i^{(k)}]$
+for any record $i$, and the matrix does not depend on $k$ (the group index).
+```{r}
+pairs(pot_ar[-c(1:3)])
+pairs(pot_cald[-c(1:3)])
+pairs(pot_gl[-c(1:3)])
+pairs(pot_is[-c(1:3)])
+pairs(pot_llan[-c(1:3)])
+```
+
+Though sample sizes vary, with Caldicot only having two observations, the general patterns of variance among groups look roughly the same.
+
+
+3. Independence: The observations are independently sampled.
+
+This assumption is satisfied if the pottery in the dataset are random samples of the pottery collected from each site. One way this could be violated is if samples were collected in groups within each site.
+
+4. Normality: The data are multivariate normally distributed.
+```{r}
+library('Hmisc')
+hist.data.frame(RBPottery[-c(1:3)], nclass = 10)
+```
+
+We can see that some chemicals are normally distributed, while some are skewed or clustered. Per the Central Limit Theorem, sample mean vectors are approximately multivariate normally distributed, even if individual observations are not. We have $n=48$ samples, greater than the rule of thumb of 30 for the CLT to apply. However, as mentioned previously, some locations have a very small number of samples, like Caldicot. As such, we simply presume this assumption to hold for the purposes of this analysis and proceed.
+
+### Analysis
+
+We may partition the total sum of squares and cross products as follows:
+
+$\begin{align*}{\mathbf T} & = \sum_{k=1}^g \sum_{i=1}^{n_k} { \left(\underline{x}_i^{(k)} -  \overline{\underline{x}}\right) } { \left( \underline{x}_i^{(k)} - \overline{\underline{x}} \right) }^{\prime}  \\& = \sum_{k=1}^g \sum_{i=1}^{n_k} { \left\{ \left(\underline{x}_i^{(k)} - \overline{\underline{x}}^{(k)} \right) + \left(\overline{\underline{x}}^{(k)} -\overline{\underline{x}} \right) \right\} } { \left\{ \left( \underline{x}_i^{(k)} - \overline{\underline{x}}^{(k)} \right) + \left(\overline{\underline{x}}^{(k)} -\overline{\underline{x}} \right) \right\} }^{\prime}   \\ & = \sum_{k=1}^g \sum_{i=1}^{n_k} {   \left(\underline{x}_i^{(k)} - \overline{\underline{x}}^{(k)} \right)   } {  \left( \underline{x}_i^{(k)} -\overline{\underline{x}}^{(k)} \right)  }^{\prime}  +  \sum_{k=1}^g  n_k {   \left(\overline{\underline{x}}^{(k)} -\overline{\underline{x}} \right)  } {  \left( \overline{\underline{x}}^{(k)} -\overline{\underline{x}} \right)  }^{\prime}.\end{align*}$
+
+The first term $E$ is the Error Sum of Squares and Cross Products.
+
+The second term $H$ is the Hypothesis Sum of Squares and Cross Products.
+
+```{r}
+pot <- NULL
+pot <- rbind(pot,pot_llan)
+pot <- rbind(pot,pot_cald)
+pot <- rbind(pot,pot_is)
+pot <- rbind(pot,pot_ar)
+pot <- rbind(pot,pot_gl)
+
+# Group: kiln 1
+x1 <- pot[pot$Kiln==1,-c(1:3)]
+m1 <- colMeans(x1)
+n1 <- dim(x1)[1]
+
+# Group: kiln 2
+x2 <- pot[pot$Kiln==2,-c(1:3)]
+m2 <- colMeans(x2)
+n2 <- dim(x2)[1]
+# Group: kiln 3
+x3 <- pot[pot$Kiln==3,-c(1:3)]
+m3 <- colMeans(x3)
+n3 <- dim(x3)[1]
+# Group: kiln 4
+x4 <- pot[pot$Kiln==4,-c(1:3)]
+m4 <- colMeans(x4)
+n4 <- dim(x4)[1]
+# Group: kiln 5
+x5 <- pot[pot$Kiln==5,-c(1:3)]
+m5 <- colMeans(x5)
+n5 <- dim(x5)[1]
+# Grand Mean
+mg <- (m1*n1 + m2*n2 + m3*n3 + m4*n4 + m5*n5)/(n1+n2+n3+n4+n5)
+```
+
+Error Sum of Squares and Cross Products Matrix can be calculated as follows:
+
+${\mathbf E} = \sum_{k=1}^g \sum_{i=1}^{n_k} {   \left( \underline{x}_i^{(k)} - \overline{\underline{x}}^{(k)} \right)   } {  \left( \underline{x}_i^{(k)} -\overline{\underline{x}}^{(k)} \right)  }^{\prime}.$
+
+```{r}
+ESS <- cov(x1)*(n1-1) + cov(x2)*(n2-1) + cov(x3)*(n3-1) + cov(x4)*(n4-1) + cov(x5)*(n5-1)
+ESS
+```
+
+Hypothesis Sum of Squares and Cross Products Matrix can be calculated as follows:
+
+${\mathbf H} = \sum_{k=1}^g  n_k {   \left(\overline{\underline{x}}^{(k)} -\overline{\underline{x}} \right)  } {  \left( \overline{\underline{x}}^{(k)} -\overline{\underline{x}} \right)  }^{\prime}.$
+
+```{r}
+HSS <- n1*(m1 - mg) %*% t(m1 - mg) + n2*(m2 - mg) %*% t(m2 - mg) + n3*(m3 - mg) %*% t(m3 - mg) +
+  n4*(m4 - mg) %*% t(m4 - mg) + n5*(m5 - mg) %*% t(m5 - mg)
+HSS
+```
+
+
+We reject the null hypothesis if the Hypothesis Sum of Squares and Cross Products matrix  is “large” relative to the Error Sum of Squares and Cross Products matrix.
+
+We will use four test statistics to determine this.
+
+- Wilks's Lambda (Ratio of Determinants)
+
+$\Lambda = \frac{ \det {\mathbf E} }{ \det {\mathbf T}} = \frac{ \det {\mathbf E} }{ \det \left( {\mathbf E}  + {\mathbf H} \right) }.$
+
+- Pillai’s Trace (Trace of Ratio)
+
+
+$V = \mbox{tr} \left[ {\mathbf H} { \left( {\mathbf H} + {\mathbf E} \right) }^{-1}  \right],$
+
+- Hotelling-Lawley Trace (Trace of Ratio)
+
+
+$U = \mbox{tr} \left[ {\mathbf H} {  {\mathbf E}   }^{-1}  \right],$
+
+- Roy’s Maximum Root (Largest Eigenvalue of Ratio)
+
+$R = \lambda_m  \left[ {\mathbf H} {  {\mathbf E}   }^{-1}  \right],$
+
+
+```{r}
+library(rootWishart)
+N <- n1+n2+n3+n4+n5
+g <- 5
+p <- 9
+output <- NULL
+
+# Wilks Lambda
+wilks <- det(ESS)/det(ESS + HSS)
+wilk_f <- ((N - g) - (p - g + 2)/2)
+wilk_xi <- 1
+if((p^2 + (g-1)^2 - 5) > 0) 
+{
+  wilk_xi <- sqrt((p^2*(g-1)^2 - 4)/(p^2 + (g-1)^2 - 5))
+}
+wilk_omega <- (p*(g-1)-2 )/2
+wilks_stat <- (wilk_f*wilk_xi - wilk_omega)*
+  (1 - wilks^(1/wilk_xi))/(p*(g-1)*wilks^(1/wilk_xi))
+output <- rbind(output,c(wilks,wilks_stat,
+  1 - pf(wilks_stat,df1 = p*(g-1), df2 = (wilk_f*wilk_xi - wilk_omega))))
+
+# Pillai's Trace
+pillai <- sum(diag(HSS %*% solve(ESS + HSS)))
+pillai_s <- min(p,g-1)
+pillai_m <- (abs(p-g+1)-1)/2
+pillai_r <- (N-g-p-1)/2
+pillai_stat <- (2*pillai_r + pillai_s + 1)*pillai/
+  ((2*pillai_m + pillai_s + 1)*(pillai_s - pillai))
+output <- rbind(output,c(pillai,pillai_stat,
+  1 - pf(pillai_stat,df1 = pillai_s*(2*pillai_m + pillai_s + 1),
+       df2 = pillai_s*(2*pillai_r + pillai_s + 1))))
+
+# Hotelling-Lawley
+hotel <- sum(diag(HSS %*% solve(ESS)))
+hotel_b <- (N-p-2)*(N-g-1)/((N-g-p-3)*(N-g-p))
+hotel_df1 <- p*(g-1)
+hotel_df2 <- 4 + (hotel_df1 + 2)/(hotel_b - 1)
+hotel_c <- hotel_df1*(hotel_df2 - 2)/(hotel_df2*(N-g-p-1))
+hotel_stat <- hotel/hotel_c
+output <- rbind(output,c(hotel,hotel_stat,
+  1 - pf(hotel_stat,df1 = hotel_df1,df2 = hotel_df2)))
+
+# Roy
+roy <- max(Re(eigen(HSS %*% solve(ESS))$values))
+roy_stat <- roy/(1+roy)
+output <- rbind(output,c(roy,roy_stat,
+  1 - doubleWishart(roy_stat,p=p,m=N-g,n=g-1)))
+```
+```{r}
+colnames(output) <- c("Statistic","Test Statistic","P-value")
+rownames(output) <- c("Wilks","Pillai","Hotelling-Lawley","Roy")
+output
+```
+We can see all of our p-values are extremely small (some have been rounded to zero). All p-values are lower than our significance level $\alpha = 0.05$. There is a signficant difference among at least two group means for the 9 variables.
+
+## Conclusion
+
+We explored the pottery dataset and used MANOVA to see whether different locations had significantly different average values for 9 chemicals. We inspected the dataset and found that it generally satisfied the four assumptions required to perform MANOVA. We calculated the error sum of squares and hypothesis sum of squares and then looked at four test statistics which all had p-values less than our significance level, meaning not all groups had the same group means and at least two differed. We consequently determine that there is a significant difference among group means in these chemicals.
